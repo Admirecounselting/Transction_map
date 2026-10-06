@@ -3,78 +3,149 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CBD 지번 일괄 지도표시</title>
+<title>CBD 거래사례 맵</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-:root{
-  --ink:#1c2a39; --muted:#5f6f80; --line:#d6dde4; --paper:#f7f9fb;
-  --jung:#1f5fa8; --jongno:#b0452c; --fail:#8a8f95; --ok:#2f7d4f;
-}
+:root{--ink:#1c2a39;--muted:#5f6f80;--line:#d6dde4;--paper:#f7f9fb;--accent:#1f5fa8;--none:#9aa1a8}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;font-family:"IBM Plex Sans KR",-apple-system,"Malgun Gothic",sans-serif;color:var(--ink);background:var(--paper)}
-.app{display:grid;grid-template-columns:380px 1fr;height:100%}
+.app{display:grid;grid-template-columns:400px 1fr;height:100%}
 aside{display:flex;flex-direction:column;border-right:1px solid var(--line);background:#fff;min-height:0}
-.head{padding:18px 18px 12px;border-bottom:1px solid var(--line)}
+.sec{padding:14px 18px;border-bottom:1px solid var(--line)}
 h1{font-size:17px;font-weight:600;margin:0 0 4px}
-.sub{font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.5}
+.sub{font-size:12px;color:var(--muted);margin:0;line-height:1.5}
 label{font-size:12px;font-weight:500;display:block;margin:8px 0 4px}
-input,textarea{width:100%;border:1px solid var(--line);border-radius:4px;padding:7px 9px;font:inherit;font-size:12.5px;color:var(--ink)}
-textarea{height:110px;resize:vertical;font-size:12px;line-height:1.45}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:inherit;font-size:12.5px;color:var(--ink);background:#fff}
+input[type=file]{padding:5px}
+textarea{height:80px;resize:vertical;font-size:12px}
+details summary{font-size:12px;color:var(--muted);cursor:pointer;margin-top:8px}
 .row{display:flex;gap:6px;margin-top:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 button{font:inherit;font-size:12.5px;font-weight:500;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:4px;padding:7px 12px;cursor:pointer}
 button.ghost{background:#fff;color:var(--ink)}
 button:disabled{opacity:.45;cursor:default}
-button:focus-visible,input:focus-visible,textarea:focus-visible,li:focus-visible{outline:2px solid var(--jung);outline-offset:1px}
-.stat{display:flex;gap:14px;font-size:12px;color:var(--muted);padding:10px 18px;border-bottom:1px solid var(--line)}
-.stat b{color:var(--ink);font-weight:600}
-.legend{display:flex;gap:12px;font-size:12px;padding:8px 18px;border-bottom:1px solid var(--line)}
-.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.chk{display:flex;align-items:center;gap:6px;font-size:12px;margin-top:8px}
+.chk input{width:auto}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.kpi div{background:#fff;padding:9px 12px}
+.kpi span{display:block;font-size:11px;color:var(--muted)}
+.kpi b{font-size:14px;font-weight:600}
+.legend{font-size:11.5px;color:var(--muted);padding:8px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ramp{height:8px;width:90px;border-radius:2px}
 ul{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
-li{display:grid;grid-template-columns:30px 1fr;gap:8px;padding:9px 18px;border-bottom:1px solid #eef1f4;cursor:pointer;font-size:12.5px}
+li{display:grid;grid-template-columns:28px 1fr;gap:8px;padding:9px 18px;border-bottom:1px solid #eef1f4;cursor:pointer;font-size:12.5px}
 li:hover{background:#f2f6fa}
-li .n{font-weight:600;font-size:12px;color:#fff;border-radius:3px;text-align:center;height:20px;line-height:20px}
+li .n{font-weight:600;font-size:11.5px;color:#fff;border-radius:3px;text-align:center;height:20px;line-height:20px}
 li .a{font-weight:500}
 li .m{color:var(--muted);font-size:11.5px;margin-top:2px}
-li.fail .a{color:var(--fail)}
-#map{width:100%;height:100%}
-.pin{font:600 11px "IBM Plex Sans KR",sans-serif;color:#fff;border:2px solid #fff;border-radius:50%;width:24px;height:24px;line-height:20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.35);cursor:pointer}
-.tip{background:#fff;border:1px solid var(--line);border-radius:4px;padding:8px 10px;font-size:12px;line-height:1.5;box-shadow:0 2px 6px rgba(0,0,0,.15);transform:translateY(-36px);white-space:nowrap}
-.empty{padding:40px;color:var(--muted);font-size:13px;line-height:1.6}
-@media (max-width:760px){.app{grid-template-columns:1fr;grid-template-rows:55% 45%}aside{order:2}}
+#map{width:100%;height:100%;position:relative}
+.pin{font:600 11px "IBM Plex Sans KR",sans-serif;color:#fff;border:2px solid #fff;border-radius:50%;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.35);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative}
+.pin.approx{border:2px dashed #e0a100}
+.pin i{position:absolute;top:-6px;right:-6px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:8px;font:600 9.5px sans-serif;padding:0 4px;line-height:14px;font-style:normal}
+.pop{background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.18);font-size:12px;min-width:300px;max-width:420px;transform:translateY(-28px)}
+.pop header{padding:10px 12px 8px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+.pop header b{font-size:13.5px;display:block}
+.pop header small{color:var(--muted);font-size:11px;line-height:1.4;display:block;margin-top:2px}
+.pop header button{background:none;border:0;color:var(--muted);font-size:16px;padding:0 2px;line-height:1}
+.pop table{border-collapse:collapse;width:100%}
+.pop th,.pop td{padding:5px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid #eef1f4}
+.pop th{font-weight:500;color:var(--muted);font-size:11px;background:var(--paper)}
+.pop th:first-child,.pop td:first-child{text-align:left}
+.pop .wrap{max-height:240px;overflow:auto}
+.pop .party{padding:0 10px 4px;color:var(--muted);font-size:11px;text-align:left;white-space:normal}
+.empty{padding:40px;color:var(--muted);font-size:13px;line-height:1.7}
+@media (max-width:820px){.app{grid-template-columns:1fr;grid-template-rows:55% 45%}aside{order:2}}
 </style>
 </head>
 <body>
 <div class="app">
 <aside>
-  <div class="head">
-    <h1>CBD 지번 일괄 지도표시</h1>
-    <p class="sub">카카오 지오코더로 지번을 좌표로 변환해 표시합니다. 결과는 도로명주소·건물명과 함께 CSV로 내려받을 수 있습니다.</p>
+  <div class="sec">
+    <h1>CBD 거래사례 맵</h1>
+    <p class="sub">엑셀 템플릿을 올리면 지번을 좌표로 바꿔 거래정보와 함께 표시합니다. 파일은 브라우저 안에서만 처리되며 서버로 전송되지 않습니다.</p>
     <label for="key">카카오 JavaScript 키</label>
-    <input id="key" placeholder="developers.kakao.com › 내 애플리케이션 › 앱 키">
-    <label for="addrs">주소 목록 (한 줄에 하나)</label>
-    <textarea id="addrs" placeholder="서울특별시 중구 남대문로5가 541&#10;서울특별시 종로구 서린동 70&#10;…"></textarea>
-    <div class="row">
-      <button id="run">지도에 표시</button>
-      <button id="csv" class="ghost" disabled>CSV 내려받기</button>
-    </div>
+    <input id="key" placeholder="[앱] › [플랫폼 키] › JavaScript 키">
+    <label for="file">거래정보 파일 (.xlsx / .csv)</label>
+    <input id="file" type="file" accept=".xlsx,.xls,.csv">
+    <details><summary>파일 없이 주소만 붙여넣기</summary><textarea id="addrs" placeholder="한 줄에 하나씩 지번주소"></textarea></details>
+    <div class="row"><button id="run">지도에 표시</button><button id="csv" class="ghost" disabled>CSV 내려받기</button></div>
   </div>
-  <div class="stat"><span>입력 <b id="sTotal">0</b></span><span>성공 <b id="sOk">0</b></span><span>실패 <b id="sFail">0</b></span><span>중복 제거 <b id="sDup">0</b></span></div>
-  <div class="legend"><span><i class="dot" style="background:var(--jung)"></i>중구</span><span><i class="dot" style="background:var(--jongno)"></i>종로구</span><span><i class="dot" style="background:var(--fail)"></i>변환 실패</span></div>
+  <div class="sec" id="filters" hidden>
+    <div class="grid2">
+      <div><label for="yFrom">거래연도 시작</label><select id="yFrom"></select></div>
+      <div><label for="yTo">거래연도 끝</label><select id="yTo"></select></div>
+      <div><label for="pMin">최소 거래가 (억원)</label><input id="pMin" type="number" min="0" placeholder="0"></div>
+      <div><label for="uMin">최소 평당가 (만원/평)</label><input id="uMin" type="number" min="0" placeholder="0"></div>
+    </div>
+    <label for="q">건물명·매수자·매도자 검색</label><input id="q" placeholder="예: 리츠, 이지스">
+    <label class="chk"><input type="checkbox" id="showNone" checked>거래정보 없는 필지도 표시</label>
+  </div>
+  <div class="kpi">
+    <div><span>표시 필지</span><b id="kSites">-</b></div>
+    <div><span>거래 건수</span><b id="kTx">-</b></div>
+    <div><span>총 거래액</span><b id="kSum">-</b></div>
+    <div><span>평당가 중위값</span><b id="kMed">-</b></div>
+    <div><span>평당가 평균</span><b id="kAvg">-</b></div>
+    <div><span>Cap Rate 평균</span><b id="kCap">-</b></div>
+  </div>
+  <div class="legend"><span>핀 색상: 최근 거래연도</span><span id="yLo"></span><span class="ramp" style="background:linear-gradient(90deg,#a9c1dd,#0f3b6e)"></span><span id="yHi"></span><span>· 크기: 거래가 · 회색: 거래정보 없음 · 점선 테두리: 근사 위치</span></div>
   <ul id="list"></ul>
 </aside>
-<div id="map"><div class="empty">카카오 JavaScript 키를 입력하고 <b>지도에 표시</b>를 누르세요.<br>키의 플랫폼(Web)에 이 파일을 여는 도메인(예: https://아이디.github.io)이 등록돼 있어야 합니다.</div></div>
+<div id="map"><div class="empty">1. 카카오 JavaScript 키 입력<br>2. 거래정보 엑셀 업로드 (또는 주소만 붙여넣기)<br>3. <b>지도에 표시</b><br><br>JavaScript 키의 <b>JavaScript SDK 도메인</b>에 이 페이지의 도메인이 등록돼 있고, <b>[제품 설정] › [카카오맵]</b> 사용 설정이 ON이어야 합니다.</div></div>
 </div>
 
 <script>
-const DEFAULT = ``;
-
 const $ = id => document.getElementById(id);
-$('addrs').value = DEFAULT;
-try { const k = localStorage.getItem('kakaoJsKey'); if (k) $('key').value = k; } catch(e){}
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => { if (v === '' || v == null) return null; if (typeof v === 'number') return isFinite(v) ? v : null; const n = parseFloat(String(v).replace(/[, ]/g,'').replace('%','')); return isFinite(n) ? n : null; };
+const fmt = (v, d=0) => v == null ? '-' : v.toLocaleString('ko-KR', {minimumFractionDigits:d, maximumFractionDigits:d});
+const lsGet = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch(e){} };
 
-let map, overlays = [], tip, results = [];
-const colorOf = r => !r.ok ? 'var(--fail)' : (r.addr.includes('종로구') ? 'var(--jongno)' : 'var(--jung)');
+function parseDate(v){
+  if (v == null || v === '') return null;
+  if (v instanceof Date && !isNaN(v)) return v;
+  if (typeof v === 'number' && v > 20000 && v < 80000) return new Date(Math.round((v - 25569) * 864e5));
+  const s = String(v).trim(), m = s.match(/^(\d{4})[.\-\/]?(\d{1,2})?[.\-\/]?(\d{1,2})?/);
+  return m ? new Date(+m[1], (m[2] ? +m[2] : 1) - 1, m[3] ? +m[3] : 1) : null;
+}
+const pick = (r, ...keys) => { for (const k of Object.keys(r)) { const kk = k.replace(/\s/g,''); if (keys.some(x => kk.startsWith(x))) return r[k]; } return ''; };
+
+let sites = [], map, pins = [], pop;
+const kv = lsGet('kakaoJsKey'); if (kv) $('key').value = kv;
+
+async function readRows(){
+  const f = $('file').files[0];
+  if (f){
+    const wb = XLSX.read(await f.arrayBuffer(), {cellDates:true});
+    const ws = wb.Sheets['거래데이터'] || wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(ws, {defval:''}).map(r => {
+      const price = num(pick(r,'거래가')), gfa = num(pick(r,'연면적'));
+      let unit = num(pick(r,'평당가')); if (unit == null && price && gfa) unit = price * 1e4 / gfa;
+      let cap = num(pick(r,'CapRate','캡레이트')); if (cap != null && cap < 1) cap *= 100;
+      return { addr:String(pick(r,'지번')).trim(), bldg:String(pick(r,'건물명')).trim(), date:parseDate(pick(r,'거래일')),
+        price, gfa, unit, cap, buyer:String(pick(r,'매수자')).trim(), seller:String(pick(r,'매도자')).trim(),
+        note:String(pick(r,'비고')).trim() };
+    }).filter(r => r.addr);
+  }
+  return $('addrs').value.split('\n').map(s => s.trim()).filter(Boolean).map(addr => ({addr}));
+}
+
+function group(rows){
+  const m = new Map();
+  rows.forEach(r => {
+    if (!m.has(r.addr)) m.set(r.addr, {addr:r.addr, bldg:'', lat:null, lng:null, txs:[]});
+    const s = m.get(r.addr);
+    if (r.bldg && !s.bldg) s.bldg = r.bldg;
+    if (r.date || r.price != null || r.unit != null || r.cap != null || r.buyer || r.seller) s.txs.push(r);
+  });
+  const out = [...m.values()];
+  out.forEach(s => s.txs.sort((a,b) => (b.date||0) - (a.date||0)));
+  return out;
+}
 
 function loadSdk(key){
   return new Promise((res, rej) => {
@@ -82,92 +153,173 @@ function loadSdk(key){
     const s = document.createElement('script');
     s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(key)}&libraries=services&autoload=false`;
     s.onload = () => kakao.maps.load(res);
-    s.onerror = () => rej(new Error('SDK 로드 실패: 키 또는 등록 도메인을 확인하세요.'));
+    s.onerror = () => rej(new Error('SDK 로드 실패: JavaScript SDK 도메인 등록과 카카오맵 사용 설정을 확인하세요.'));
     document.head.appendChild(s);
   });
 }
 
-function geocode(gc, addr){
-  return new Promise(res => gc.addressSearch(addr, (r, st) => {
+// 엑셀·웹에서 복사한 주소의 숨은 문자와 부가 표기를 정리
+function norm(a){
+  return String(a)
+    .replace(/[\u00a0\u2000-\u200b\u3000\ufeff\t\r\n]/g, ' ')
+    .replace(/\(.*?\)|\[.*?\]/g, ' ')
+    .replace(/\s*외\s*\d*\s*(필지|개?\s*필지)?\s*$/, '')
+    .replace(/(\d)\s*번지/g, '$1')
+    .replace(/\s*-\s*/g, '-')
+    .replace(/\s+/g, ' ').trim();
+}
+let lastStatus = '';
+function tryAddr(gc, q){
+  return new Promise(res => gc.addressSearch(q, (r, st) => {
+    lastStatus = st;
     if (st === kakao.maps.services.Status.OK && r.length){
-      const x = r[0];
-      res({ok:true, lat:+x.y, lng:+x.x,
-           road:(x.road_address && x.road_address.address_name) || '',
-           bldg:(x.road_address && x.road_address.building_name) || ''});
-    } else res({ok:false});
+      const ra = r[0].road_address || {};
+      res({ok:true, lat:+r[0].y, lng:+r[0].x, road:ra.address_name || '', kbldg:ra.building_name || ''});
+    } else res(null);
   }));
 }
+function tryKeyword(ps, q){
+  return new Promise(res => ps.keywordSearch(q, (r, st) => {
+    if (st === kakao.maps.services.Status.OK && r.length) res({ok:true, lat:+r[0].y, lng:+r[0].x, road:r[0].road_address_name || '', kbldg:r[0].place_name || ''});
+    else res(null);
+  }));
+}
+// 1) 정리된 지번 → 2) '서울' 축약 → 3) 본번만(근사) → 4) 장소 키워드(근사)
+async function geocode(gc, ps, addr){
+  const a = norm(addr), c = lsGet('geo3:' + a); if (c) return JSON.parse(c);
+  const short = a.replace(/^서울특별시/, '서울');
+  let g = await tryAddr(gc, a) || await tryAddr(gc, short);
+  if (g) g.method = 'exact';
+  if (!g && /\d+-\d+$/.test(a)){ g = await tryAddr(gc, a.replace(/(\d+)-\d+$/, '$1')); if (g){ g.method = 'bonbun'; g.kbldg = ''; } }
+  if (!g){ g = await tryKeyword(ps, short); if (g) g.method = 'keyword'; }
+  if (!g) return {ok:false, status:lastStatus, sent:a};
+  lsSet('geo3:' + a, JSON.stringify(g));
+  return g;
+}
 
-function render(){
+function filtered(){
+  const yf = +$('yFrom').value || 0, yt = +$('yTo').value || 9999;
+  const pm = num($('pMin').value) || 0, um = num($('uMin').value) || 0, q = $('q').value.trim().toLowerCase();
+  return sites.map((s, i) => {
+    const txs = s.txs.filter(t => {
+      const y = t.date ? t.date.getFullYear() : null;
+      if (y != null && (y < yf || y > yt)) return false;
+      if (y == null && (yf || yt < 9999) && ($('yFrom').value || $('yTo').value)) return false;
+      if (pm && !(t.price >= pm)) return false;
+      if (um && !(t.unit >= um)) return false;
+      if (q && ![t.bldg, s.bldg, s.kbldg, t.buyer, t.seller].join(' ').toLowerCase().includes(q)) return false;
+      return true;
+    });
+    const anyFilter = yf || yt < 9999 || pm || um || q;
+    const show = s.ok && (txs.length || (!s.txs.length && $('showNone').checked && !anyFilter));
+    return {s, i, txs, show};
+  }).filter(v => v.show);
+}
+
+function colorFor(year, lo, hi){
+  if (!year) return '#9aa1a8';
+  const t = hi > lo ? (year - lo) / (hi - lo) : 1, a = [169,193,221], b = [15,59,110];
+  return `rgb(${a.map((v,k) => Math.round(v + (b[k]-v)*t)).join(',')})`;
+}
+
+function draw(){
+  pins.forEach(p => p.setMap(null)); pins = []; if (pop) pop.setMap(null);
+  const vis = filtered();
+  const years = sites.flatMap(s => s.txs).map(t => t.date && t.date.getFullYear()).filter(Boolean);
+  const lo = Math.min(...years), hi = Math.max(...years);
+  $('yLo').textContent = years.length ? lo : ''; $('yHi').textContent = years.length ? hi : '';
+  const maxP = Math.max(1, ...vis.flatMap(v => v.txs.map(t => t.price || 0)));
   const ul = $('list'); ul.innerHTML = '';
-  results.forEach((r, i) => {
-    const li = document.createElement('li');
-    li.tabIndex = 0; if (!r.ok) li.className = 'fail';
-    li.innerHTML = `<span class="n" style="background:${colorOf(r)}">${i+1}</span>
-      <div><div class="a">${r.addr.replace('서울특별시 ','')}</div>
-      <div class="m">${r.ok ? (r.bldg ? r.bldg+' / ' : '') + (r.road || '도로명 없음') : '좌표 변환 실패 — 지번 확인 필요'}</div></div>`;
-    const go = () => { if (r.ok){ map.setLevel(2); map.panTo(new kakao.maps.LatLng(r.lat, r.lng)); showTip(r, i); } };
+  vis.forEach(({s, i, txs}) => {
+    const latest = txs[0], yr = latest && latest.date ? latest.date.getFullYear() : null;
+    const col = txs.length ? colorFor(yr, lo, hi) : '#9aa1a8';
+    const mp = Math.max(0, ...txs.map(t => t.price || 0));
+    const size = txs.length && mp ? Math.round(22 + 18 * Math.sqrt(mp / maxP)) : 20;
+    const el = document.createElement('div');
+    el.className = 'pin' + (s.method === 'bonbun' || s.method === 'keyword' ? ' approx' : ''); el.style.cssText = `background:${col};width:${size}px;height:${size}px`;
+    el.innerHTML = `${i+1}${txs.length > 1 ? `<i>${txs.length}</i>` : ''}`;
+    el.onclick = () => openPop(s, i, txs);
+    const o = new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(s.lat, s.lng), content:el, yAnchor:.5, zIndex:size});
+    o.setMap(map); pins.push(o);
+    const name = s.bldg || s.kbldg || s.addr.replace('서울특별시 ','');
+    const meta = latest ? [latest.date ? `${latest.date.getFullYear()}.${String(latest.date.getMonth()+1).padStart(2,'0')}` : '', latest.price != null ? fmt(latest.price,0)+'억' : '', latest.unit != null ? fmt(latest.unit)+'만/평' : '', latest.cap != null ? fmt(latest.cap,2)+'%' : ''].filter(Boolean).join(' · ') : '거래정보 없음';
+    const li = document.createElement('li'); li.tabIndex = 0;
+    li.innerHTML = `<span class="n" style="background:${col}">${i+1}</span><div><div class="a">${esc(name)}</div><div class="m">${esc(s.addr.replace('서울특별시 ',''))}${s.method === 'bonbun' ? ' · <span style="color:#b07a00">근사 위치(본번 기준)</span>' : s.method === 'keyword' ? ' · <span style="color:#b07a00">근사 위치(키워드 검색)</span>' : ''}</div><div class="m">${esc(meta)}${txs.length > 1 ? ` (외 ${txs.length-1}건)` : ''}</div></div>`;
+    const go = () => { map.setLevel(3); map.panTo(new kakao.maps.LatLng(s.lat, s.lng)); openPop(s, i, txs); };
     li.onclick = go; li.onkeydown = e => { if (e.key === 'Enter') go(); };
     ul.appendChild(li);
   });
+  const all = vis.flatMap(v => v.txs), units = all.map(t => t.unit).filter(v => v != null).sort((a,b) => a-b), caps = all.map(t => t.cap).filter(v => v != null);
+  $('kSites').textContent = fmt(vis.length); $('kTx').textContent = fmt(all.length);
+  const sum = all.reduce((a,t) => a + (t.price || 0), 0);
+  $('kSum').textContent = sum ? (sum >= 10000 ? fmt(sum/10000,2)+'조' : fmt(sum)+'억') : '-';
+  $('kMed').textContent = units.length ? fmt(units.length % 2 ? units[(units.length-1)/2] : (units[units.length/2-1]+units[units.length/2])/2)+'만' : '-';
+  $('kAvg').textContent = units.length ? fmt(units.reduce((a,b) => a+b, 0)/units.length)+'만' : '-';
+  $('kCap').textContent = caps.length ? fmt(caps.reduce((a,b) => a+b, 0)/caps.length,2)+'%' : '-';
 }
 
-function showTip(r, i){
-  if (tip) tip.setMap(null);
-  tip = new kakao.maps.CustomOverlay({
-    position:new kakao.maps.LatLng(r.lat, r.lng), yAnchor:1,
-    content:`<div class="tip"><b>${i+1}. ${r.bldg || r.addr.replace('서울특별시 ','')}</b><br>${r.addr.replace('서울특별시 ','')}${r.road ? '<br>'+r.road.replace('서울특별시 ','') : ''}</div>`
-  });
-  tip.setMap(map);
+function openPop(s, i, txs){
+  if (pop) pop.setMap(null);
+  const d = t => t.date ? `${t.date.getFullYear()}.${String(t.date.getMonth()+1).padStart(2,'0')}` : '-';
+  const rows = txs.map(t => `<tr><td>${d(t)}</td><td>${t.price != null ? fmt(t.price,1) : '-'}</td><td>${t.gfa != null ? fmt(t.gfa) : '-'}</td><td>${t.unit != null ? fmt(t.unit) : '-'}</td><td>${t.cap != null ? fmt(t.cap,2)+'%' : '-'}</td></tr>`
+    + ((t.buyer || t.seller || t.note) ? `<tr><td colspan="5" class="party">${t.seller ? '매도 '+esc(t.seller) : ''}${t.seller && t.buyer ? ' → ' : ''}${t.buyer ? '매수 '+esc(t.buyer) : ''}${t.note ? ' · '+esc(t.note) : ''}</td></tr>` : '')).join('');
+  const el = document.createElement('div'); el.className = 'pop';
+  el.innerHTML = `<header><div><b>${i+1}. ${esc(s.bldg || s.kbldg || '건물명 미상')}</b><small>${esc(s.addr.replace('서울특별시 ',''))}${s.road ? '<br>'+esc(s.road.replace('서울특별시 ','')) : ''}${s.method === 'bonbun' ? '<br><span style="color:#b07a00">근사 위치: 부번 지번이 없어 본번 위치로 표시</span>' : s.method === 'keyword' ? '<br><span style="color:#b07a00">근사 위치: 키워드 검색 결과, 위치 확인 필요</span>' : ''}</small></div><button aria-label="닫기">×</button></header>`
+    + (txs.length ? `<div class="wrap"><table><tr><th>거래일</th><th>거래가(억)</th><th>연면적(평)</th><th>평당가(만)</th><th>Cap</th></tr>${rows}</table></div>` : `<div class="party" style="padding:10px">입력된 거래정보가 없습니다.</div>`);
+  el.querySelector('button').onclick = () => pop.setMap(null);
+  ['mousedown','touchstart','wheel'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation()));
+  pop = new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(s.lat, s.lng), content:el, yAnchor:1, zIndex:999});
+  pop.setMap(map);
 }
 
 $('run').onclick = async () => {
-  const key = $('key').value.trim();
-  if (!key) { $('key').focus(); return; }
-  try { localStorage.setItem('kakaoJsKey', key); } catch(e){}
-  const raw = $('addrs').value.split('\n').map(s => s.trim()).filter(Boolean);
-  const uniq = [...new Set(raw)];
-  $('sTotal').textContent = raw.length; $('sDup').textContent = raw.length - uniq.length;
+  const key = $('key').value.trim(); if (!key) { $('key').focus(); return; }
+  lsSet('kakaoJsKey', key);
+  const rows = await readRows().catch(e => { alert('파일을 읽지 못했습니다: ' + e.message); return null; });
+  if (!rows || !rows.length) { alert('지번주소가 있는 행이 없습니다. 파일의 "지번주소" 열을 확인하세요.'); return; }
   $('run').disabled = true; $('run').textContent = '변환 중…';
-  try { await loadSdk(key); }
-  catch(e){ alert(e.message); $('run').disabled = false; $('run').textContent = '지도에 표시'; return; }
-
+  try { await loadSdk(key); } catch(e) { alert(e.message); $('run').disabled = false; $('run').textContent = '지도에 표시'; return; }
   if (!map){
     $('map').innerHTML = '';
-    map = new kakao.maps.Map($('map'), {center:new kakao.maps.LatLng(37.5665, 126.982), level:5});
+    map = new kakao.maps.Map($('map'), {center:new kakao.maps.LatLng(37.566, 126.982), level:5});
     map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
   }
-  overlays.forEach(o => o.setMap(null)); overlays = []; results = [];
-  const gc = new kakao.maps.services.Geocoder();
-  for (const addr of uniq){
-    const g = await geocode(gc, addr);
-    results.push({addr, ...g});
-    $('sOk').textContent = results.filter(r => r.ok).length;
-    $('sFail').textContent = results.filter(r => !r.ok).length;
+  sites = group(rows);
+  const gc = new kakao.maps.services.Geocoder(), ps = new kakao.maps.services.Places();
+  let n = 0;
+  for (const s of sites){
+    const g = await geocode(gc, ps, s.addr);
+    s.ok = g.ok; s.road = g.road || ''; s.kbldg = g.kbldg || ''; s.method = g.method || ''; s.status = g.status; s.sent = g.sent;
+    if (g.ok){ s.lat = g.lat; s.lng = g.lng; }
+    $('run').textContent = `변환 중… ${++n}/${sites.length}`;
   }
-  const bounds = new kakao.maps.LatLngBounds();
-  results.forEach((r, i) => {
-    if (!r.ok) return;
-    const pos = new kakao.maps.LatLng(r.lat, r.lng); bounds.extend(pos);
-    const el = document.createElement('div');
-    el.className = 'pin'; el.style.background = colorOf(r); el.textContent = i+1;
-    el.onclick = () => showTip(r, i);
-    const o = new kakao.maps.CustomOverlay({position:pos, content:el, yAnchor:.5});
-    o.setMap(map); overlays.push(o);
-  });
-  if (!bounds.isEmpty()) map.setBounds(bounds);
-  render();
-  $('csv').disabled = false;
-  $('run').disabled = false; $('run').textContent = '다시 표시';
+  const years = [...new Set(sites.flatMap(s => s.txs).map(t => t.date && t.date.getFullYear()).filter(Boolean))].sort();
+  const opt = years.map(y => `<option value="${y}">${y}</option>`).join('');
+  $('yFrom').innerHTML = `<option value="">전체</option>${opt}`; $('yTo').innerHTML = `<option value="">전체</option>${opt}`;
+  $('filters').hidden = !sites.some(s => s.txs.length);
+  draw();
+  const b = new kakao.maps.LatLngBounds(); sites.filter(s => s.ok).forEach(s => b.extend(new kakao.maps.LatLng(s.lat, s.lng)));
+  if (!b.isEmpty()) map.setBounds(b);
+  const fail = sites.filter(s => !s.ok), approx = sites.filter(s => s.method === 'bonbun' || s.method === 'keyword');
+  if (fail.length || approx.length) alert(
+    (fail.length ? `주소 변환 실패 ${fail.length}건 — 엑셀의 지번주소를 현행 지번으로 확인하세요:\n` + fail.map(s => '· ' + JSON.stringify(s.sent) + '  [' + s.status + ']').join('\n') + (fail.some(s => s.status === 'ERROR') ? '\n\n※ ERROR 상태는 지번 문제가 아니라 API 권한·쿼터 문제입니다. [제품 설정] › [카카오맵] 사용 설정과 키를 확인하세요.' : '') + '\n\n' : '') +
+    (approx.length ? `근사 위치 ${approx.length}건 (점선 핀, 위치 확인 권장):\n` + approx.map(s => '· ' + s.addr + (s.method === 'bonbun' ? ' (본번 기준)' : ' (키워드)')).join('\n') : ''));
+  $('csv').disabled = false; $('run').disabled = false; $('run').textContent = '다시 표시';
 };
 
+['yFrom','yTo','pMin','uMin','q','showNone'].forEach(id => $(id).addEventListener('input', () => map && draw()));
+
 $('csv').onclick = () => {
-  const head = 'No,지번주소,도로명주소,건물명,위도,경도,상태\n';
-  const body = results.map((r, i) => [i+1, r.addr, r.road||'', r.bldg||'', r.lat||'', r.lng||'', r.ok?'OK':'FAIL']
-    .map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['\ufeff' + head + body], {type:'text/csv;charset=utf-8'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = 'cbd_parcels_geocoded.csv'; a.click();
+  const H = ['No','지번주소','도로명주소','건물명','거래일','거래가(억원)','연면적(평)','평당가(만원/평)','Cap Rate(%)','매수자','매도자','비고','위치상태'];
+  const M = {exact:'OK', keyword:'근사(키워드)', bonbun:'근사(본번)'};
+  const out = [];
+  sites.forEach((s, i) => {
+    const base = t => [i+1, s.addr, s.road, s.bldg || s.kbldg, t && t.date ? t.date.toISOString().slice(0,10) : '', t?.price ?? '', t?.gfa ?? '', t?.unit != null ? Math.round(t.unit) : '', t?.cap ?? '', t?.buyer || '', t?.seller || '', t?.note || '', s.ok ? (M[s.method] || 'OK') : 'FAIL'];
+    (s.txs.length ? s.txs : [null]).forEach(t => out.push(base(t)));
+  });
+  const csv = [H, ...out].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'}));
+  a.download = 'cbd_transactions_geocoded.csv'; a.click();
 };
 </script>
 </body>
